@@ -23,7 +23,16 @@ function readColony(data) {
 function readGitter(data) {
     var lines = data.match(/[^\r\n]+/g);
 
-    var arraySize = lines.length - 4;
+    var headerSize = 0;
+    for (var i = 0, l; l = lines[i]; i++) {
+        if (l.indexOf('#') == 0) { // Ignore commented lines, header size might vary
+            headerSize++;
+        } else {
+            break;
+        }
+    }
+
+    var arraySize = lines.length - headerSize;
     var sizes, rows;
 
     if (arraySize == 1536) {
@@ -34,7 +43,7 @@ function readGitter(data) {
         rows = 16;
     }
 
-    for (var i = 4, l; l = lines[i]; i++) {
+    for (var i = headerSize, l; l = lines[i]; i++) {
         l = l.match(/[^\s]+/g);
         sizes[rows - parseInt(l[0])][parseInt(l[1]) - 1] = parseInt(l[2]);
     }
