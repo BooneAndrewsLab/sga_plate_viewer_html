@@ -1,4 +1,9 @@
 var fileData;
+var colorscaleValue = [
+    [0, '#FF0000'],
+    [.5, '#000000'],
+    [1, '#00FF00']
+];
 
 function handleImage(f, ele) {
     var reader = new FileReader();
@@ -9,7 +14,7 @@ function handleImage(f, ele) {
             // Render thumbnail.
             ele.innerHTML = ['<img class="img-fluid" src="', e.target.result,
                 '" title="', encodeURI(theFile.name),
-                '" onload="this.parentElement.classList.add(\'show\'); updateNewItem();"/>'].join('');
+                '" onload="this.parentElement.classList.add(\'show\'); initNewItem();"/>'].join('');
         };
     })(f);
 
@@ -19,7 +24,7 @@ function handleImage(f, ele) {
 
 function handleDat(f, ele) {
     var reader = new FileReader();
-    var sizes, div;
+    var sizes, normalized, div;
 
     reader.onloadend = function (evt) {
         if (evt.target.readyState === FileReader.DONE) { // DONE == 2
@@ -32,26 +37,22 @@ function handleDat(f, ele) {
                 return;
             }
 
-            sizes = normalizeWithPmm(sizes);
+            var pmm = calculatePmm(sizes);
+            normalized = normalizeWithPmm(sizes, pmm);
+
+            /* Save pmm in attributes */
+            ele.parentElement.setAttribute('data-pmm', pmm);
 
             div = document.createElement('div');
             ele.insertBefore(div, null);
 
-            var colorscaleValue = [
-                [0, '#FF0000'],
-                [.5, '#000000'],
-                [1, '#00FF00']
-            ];
-
-            var data = [
-                {
-                    z: sizes,
-                    type: 'heatmap',
-                    colorscale: colorscaleValue,
-                    showscale: false,
-                    hoverinfo: 'none'
-                }
-            ];
+            var data = [{
+                z: normalized,
+                type: 'heatmap',
+                colorscale: colorscaleValue,
+                showscale: false,
+                hoverinfo: 'none'
+            }];
 
             var axisTemplate = {
                 showgrid: false,
@@ -79,17 +80,59 @@ function handleDat(f, ele) {
 
             Plotly.newPlot(div, data, layout, {displayModeBar: false});
             ele.classList.add('show');
-            updateNewItem();
+
+            ele.parentElement.addEventListener('updateHeatmap', function(evt) {
+                data[0]['z'] = normalizeWithPmm(sizes, evt.detail.pmm || pmm);
+
+                Plotly.update(div, data, layout);
+            }, false);
+
+            initNewItem();
         }
     };
 
     reader.readAsBinaryString(f);
 }
 
-function updateNewItem() {
+/**
+ * Called when all images and heatmaps are loaded
+ */
+function initListeners() {
+    var pairs = document.querySelectorAll('#pairs .row');
+    var i, j, ele, eme;
+
+    for (i = 0; ele = pairs[i]; i++) {
+        /* Use this plate as the reference for other heatmaps */
+        ele.addEventListener('click', function () {
+            this.classList.toggle("bg-warning");
+            var eventData = {'detail': {}};
+            if (this.classList.contains('bg-warning')) {
+                eventData['detail']['pmm'] = this.getAttribute('data-pmm');
+            }
+
+            /* Dispatch update to all other heatmaps */
+            for (j = 0; eme = pairs[j]; j++) {
+                if (eme != this) {
+                    eme.classList.remove("bg-warning");
+                }
+
+                var event = new CustomEvent('updateHeatmap', eventData);
+                eme.dispatchEvent(event);
+            }
+        }, false);
+    }
+}
+
+/**
+ * Recursively calls itself untill all new elements are loaded. Wrapped in a timeout for a smoother loading
+ */
+function initNewItem() {
     setTimeout(function () {
         var ele = document.querySelector('.new-plate');
-        if (!ele) return;
+        if (!ele) {
+            initListeners();
+            return;
+        }
 
         ele.classList.remove('new-plate');
 
@@ -103,14 +146,14 @@ function updateNewItem() {
                 if (data.hasOwnProperty('image')) {
                     handleImage(data['image'], ele);
                 } else {
-                    updateNewItem();
+                    initNewItem();
                 }
                 break;
             case 'heatmap':
                 if (data.hasOwnProperty('data')) {
                     handleDat(data['data'], ele);
                 } else {
-                    updateNewItem();
+                    initNewItem();
                 }
                 break;
         }
@@ -170,7 +213,7 @@ function handleFileSelect(evt) {
         pairsParent.insertBefore(div, null);
     }
 
-    updateNewItem();
+    initNewItem();
 }
 
 document.getElementById('files').addEventListener('change', handleFileSelect, false);
