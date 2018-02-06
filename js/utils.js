@@ -35,3 +35,19 @@ function elementInnerWidth(element) {
 
     return width + margin - padding + border;
 }
+
+function setState(state) {
+    var ele = document.getElementById('notification');
+    switch (state) {
+        case "loading":
+            ele.classList.remove('bg-success');
+            ele.classList.add('bg-warning');
+            ele.children[0].className = 'fas fa-sync fa-spin';
+            break;
+        case "ready":
+            ele.classList.remove('bg-warning');
+            ele.classList.add('bg-success');
+            ele.children[0].className = 'fas fa-check';
+            break;
+    }
+}

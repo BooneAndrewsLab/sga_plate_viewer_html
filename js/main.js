@@ -146,6 +146,7 @@ function initNewItem() {
         var ele = document.querySelector('.new-plate');
         if (!ele) {
             initListeners();
+            setState('ready');
             return;
         }
 
@@ -179,6 +180,8 @@ function handleFileSelect(evt) {
     var files = evt.target.files; // FileList object
     var base, names = [], data, i, f, name, tally = {'images': 0, 'dats': 0}, colSize;
     var pairsParent, div, inner;
+
+    setState('loading');
 
     pairsParent = document.getElementById('pairs');
     pairsParent.innerHTML = ''; // Clear element
