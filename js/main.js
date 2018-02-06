@@ -25,6 +25,7 @@ function handleImage(f, ele) {
 function handleDat(f, ele) {
     var reader = new FileReader();
     var sizes, normalized, div;
+    var name = ele.parentElement.getAttribute('data-pair-name');
 
     reader.onloadend = function (evt) {
         if (evt.target.readyState === FileReader.DONE) { // DONE == 2
@@ -37,8 +38,12 @@ function handleDat(f, ele) {
                 return;
             }
 
+            fileData[name]['sizes'] = sizes;
+
             var pmm = calculatePmm(sizes);
-            normalized = normalizeWithPmm(sizes, pmm);
+            fileData[name]['pmm'] = pmm;
+
+            normalized = normalizeWithPmmNoClip(sizes, pmm);
 
             /* Save pmm in attributes */
             ele.parentElement.setAttribute('data-pmm', pmm);
@@ -51,7 +56,10 @@ function handleDat(f, ele) {
                 type: 'heatmap',
                 colorscale: colorscaleValue,
                 showscale: false,
-                hoverinfo: 'none'
+                hoverinfo: 'none',
+                zauto: false,
+                zmin: -.5,
+                zmax: .5
             }];
 
             var axisTemplate = {
@@ -82,7 +90,13 @@ function handleDat(f, ele) {
             ele.classList.add('show');
 
             ele.parentElement.addEventListener('updateHeatmap', function(evt) {
-                data[0]['z'] = normalizeWithPmm(sizes, evt.detail.pmm || pmm);
+                if (!!evt.detail['name'] && name != evt.detail['name']) {
+                    data[0]['z'] = math.subtract(
+                        normalizeWithPmmNoClip(sizes, pmm),
+                        normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
+                } else {
+                    data[0]['z'] = normalizeWithPmmNoClip(sizes, pmm);
+                }
 
                 Plotly.update(div, data, layout);
             }, false);
@@ -108,6 +122,7 @@ function initListeners() {
             var eventData = {'detail': {}};
             if (this.classList.contains('bg-warning')) {
                 eventData['detail']['pmm'] = this.getAttribute('data-pmm');
+                eventData['detail']['name'] = this.getAttribute('data-pair-name');
             }
 
             /* Dispatch update to all other heatmaps */
@@ -198,7 +213,7 @@ function handleFileSelect(evt) {
         div.classList.add('py-2');
         div.setAttribute('data-pair-name', name);
 
-        inner = ['<div class="col-sm-12 fade" id="', encodeURI(name), '"><h4>', name, '</h4></div>'];
+        inner = ['<div class="col-sm-12 fade" id="', encodeURI(name), '"><div><span class="h4">', name, '</span><a href="#" class="h4 float-right fas fa-bullseye hidden"></a></div></div>'];
 
         if (tally['images']) {
             inner = inner.concat(['<div class="col-sm-', colSize, ' fade new-plate" data-plate-type="image" id="', encodeURI(name), '-image"></div>']);

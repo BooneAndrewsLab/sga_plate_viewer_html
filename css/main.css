@@ -273,3 +273,7 @@ textarea {
         page-break-after: avoid;
     }
 }
+
+a.fas:hover {
+    text-decoration-line: none;
+}

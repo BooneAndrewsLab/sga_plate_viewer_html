@@ -22,10 +22,8 @@ function calculatePmm(sizes) {
     return math.mean(flat.slice(flat.length * .4, flat.length * .6));
 }
 
-function normalizeWithPmm(sizes, mm) {
-    return math.chain(sizes).divide(mm).map(function (v) {
-        return v > 1 ? Math.min(v, 1.5) : Math.max(v, .5);
-    }).done();
+function normalizeWithPmmNoClip(sizes, mm) {
+    return math.chain(sizes).divide(mm).subtract(1).done();
 }
 
 function elementInnerWidth(element) {
