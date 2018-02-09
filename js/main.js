@@ -11,10 +11,13 @@ function handleImage(f, ele) {
     // Closure to capture the file information.
     reader.onload = (function (theFile) {
         return function (e) {
-            // Render thumbnail.
-            ele.innerHTML = ['<img class="img-fluid" src="', e.target.result,
-                '" title="', encodeURI(theFile.name),
-                '" onload="this.parentElement.classList.add(\'show\'); initNewItem();"/>'].join('');
+            // Resize image to 2x container size for faster loading but still retain some detail
+            resizeImgData(e.target.result, elementInnerWidth(ele.parentElement), function (dataUrl) {
+                ele.innerHTML = ['<img class="img-plate img-fluid" src="', dataUrl,
+                    '" title="', encodeURI(theFile.name), '" />'].join('');
+                ele.classList.add('show');
+                initNewItem();
+            });
         };
     })(f);
 
@@ -89,8 +92,8 @@ function handleDat(f, ele) {
             Plotly.newPlot(div, data, layout, {displayModeBar: false});
             ele.classList.add('show');
 
-            ele.parentElement.addEventListener('updateHeatmap', function(evt) {
-                if (!!evt.detail['name'] && name != evt.detail['name']) {
+            ele.parentElement.addEventListener('updateHeatmap', function (evt) {
+                if (!!evt.detail['name'] && name !== evt.detail['name']) {
                     data[0]['z'] = math.subtract(
                         normalizeWithPmmNoClip(sizes, pmm),
                         normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
@@ -127,7 +130,7 @@ function initListeners() {
 
             /* Dispatch update to all other heatmaps */
             for (j = 0; eme = pairs[j]; j++) {
-                if (eme != this) {
+                if (eme !== this) {
                     eme.classList.remove("bg-warning");
                 }
 
@@ -136,6 +139,39 @@ function initListeners() {
             }
         }, false);
     }
+}
+
+function createGif() {
+    var gif = null;
+    var i;
+    var plates = document.querySelectorAll('.img-plate'), plate;
+
+    if (plates.length == 0) {
+        return;
+    }
+
+    for (i = 0; plate = plates[i]; i++) {
+        if (gif == null) {
+            gif = new GIF({
+                workerScript: 'js/vendor/gif.worker.js',
+                quality: 1000,
+                width: plate.naturalWidth,
+                height: plate.naturalHeight,
+                debug: true
+            });
+        }
+
+        gif.addFrame(plate);
+    }
+
+    gif.on('finished', function (blob) {
+        document.getElementById('gif').setAttribute('src', URL.createObjectURL(blob));
+        setTimeout(function () {
+            document.getElementById('gif').scrollIntoView({behavior: "smooth", block: "center", inline: "end"});
+        }, 1000);
+    });
+
+    gif.render();
 }
 
 /**
@@ -182,6 +218,8 @@ function handleFileSelect(evt) {
     var pairsParent, div, inner;
 
     setState('loading');
+
+    document.getElementById('gif').src = "";
 
     pairsParent = document.getElementById('pairs');
     pairsParent.innerHTML = ''; // Clear element
@@ -235,3 +273,4 @@ function handleFileSelect(evt) {
 }
 
 document.getElementById('files').addEventListener('change', handleFileSelect, false);
+document.getElementById('btn-gif').addEventListener('click', createGif, false);
