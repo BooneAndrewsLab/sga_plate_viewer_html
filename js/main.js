@@ -93,13 +93,13 @@ function handleDat(f, ele) {
             ele.classList.add('show');
 
             ele.parentElement.addEventListener('updateHeatmap', function (evt) {
-                if (!!evt.detail['name'] && name !== evt.detail['name']) {
+                // if (!!evt.detail['name'] && name !== evt.detail['name']) {
                     data[0]['z'] = math.subtract(
                         normalizeWithPmmNoClip(sizes, pmm),
                         normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
-                } else {
-                    data[0]['z'] = normalizeWithPmmNoClip(sizes, pmm);
-                }
+                // } else {
+                //     data[0]['z'] = normalizeWithPmmNoClip(sizes, pmm);
+                // }
 
                 Plotly.update(div, data, layout);
             }, false);
@@ -141,10 +141,11 @@ function initListeners() {
     }
 }
 
-function createGif() {
+async function createGif() {
     var gif = null;
-    var i;
-    var plates = document.querySelectorAll('.img-plate'), plate;
+    var i, added = 0, w, h;
+    // var plates = document.querySelectorAll('.img-plate'), plate;
+    var plates = document.querySelectorAll("[data-plate-type=heatmap] > div"), plate;
 
     if (plates.length == 0) {
         return;
@@ -152,16 +153,23 @@ function createGif() {
 
     for (i = 0; plate = plates[i]; i++) {
         if (gif == null) {
+            w = elementInnerWidth(plate) * 2;
+            h = elementInnerHeight(plate) * 2;
             gif = new GIF({
                 workerScript: 'js/vendor/gif.worker.js',
-                quality: 1000,
-                width: plate.naturalWidth,
-                height: plate.naturalHeight,
+                quality: 10,
+                width: w,
+                height: h,
                 debug: true
             });
         }
 
-        gif.addFrame(plate);
+        await Plotly.toImage(plate, {format:'jpeg', width: w, height: h}).then(function(dataUrl) {
+            var tmpimg = document.createElement('img');
+            tmpimg.setAttribute('src', dataUrl);
+            gif.addFrame(tmpimg);
+            added++;
+        });
     }
 
     gif.on('finished', function (blob) {

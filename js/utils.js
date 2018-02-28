@@ -36,6 +36,16 @@ function elementInnerWidth(element) {
     return width + margin - padding + border;
 }
 
+function elementInnerHeight(element) {
+    var style = element.currentStyle || window.getComputedStyle(element),
+        height = element.offsetHeight, // or use style.width
+        margin = parseFloat(style.marginTop) + parseFloat(style.marginBottom),
+        padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
+        border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+
+    return height + margin - padding + border;
+}
+
 function setState(state) {
     var ele = document.getElementById('notification');
     var controls = document.getElementById("controls");
@@ -50,7 +60,7 @@ function setState(state) {
             ele.classList.remove('bg-warning');
             ele.classList.add('bg-success');
             ele.children[0].className = 'fas fa-check';
-            if (document.querySelectorAll('.img-plate').length > 0) controls.classList.add('show');
+            if (document.querySelectorAll('[data-plate-type=heatmap]').length > 0) controls.classList.add('show');
             break;
     }
 }
