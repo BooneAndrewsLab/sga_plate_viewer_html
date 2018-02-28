@@ -5,6 +5,15 @@ var colorscaleValue = [
     [1, '#00FF00']
 ];
 
+var modal = new Modal({el: document.getElementById('gif-modal')});
+modal.on('show', function (m) {
+    m.el.classList.remove('fade');
+});
+
+modal.on('hide', function (m) {
+    m.el.classList.add('fade');
+});
+
 function handleImage(f, ele) {
     var reader = new FileReader();
 
@@ -94,9 +103,9 @@ function handleDat(f, ele) {
 
             ele.parentElement.addEventListener('updateHeatmap', function (evt) {
                 // if (!!evt.detail['name'] && name !== evt.detail['name']) {
-                    data[0]['z'] = math.subtract(
-                        normalizeWithPmmNoClip(sizes, pmm),
-                        normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
+                data[0]['z'] = math.subtract(
+                    normalizeWithPmmNoClip(sizes, pmm),
+                    normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
                 // } else {
                 //     data[0]['z'] = normalizeWithPmmNoClip(sizes, pmm);
                 // }
@@ -141,11 +150,15 @@ function initListeners() {
     }
 }
 
-async function createGif() {
+async function createGif(gifType) {
     var gif = null;
     var i, added = 0, w, h;
-    // var plates = document.querySelectorAll('.img-plate'), plate;
-    var plates = document.querySelectorAll("[data-plate-type=heatmap] > div"), plate;
+    var plates, plate;
+    if (gifType == 'plate') {
+        plates = document.querySelectorAll('.img-plate');
+    } else {
+        plates = document.querySelectorAll("[data-plate-type=heatmap] > div");
+    }
 
     if (plates.length == 0) {
         return;
@@ -164,12 +177,17 @@ async function createGif() {
             });
         }
 
-        await Plotly.toImage(plate, {format:'jpeg', width: w, height: h}).then(function(dataUrl) {
-            var tmpimg = document.createElement('img');
-            tmpimg.setAttribute('src', dataUrl);
-            gif.addFrame(tmpimg);
+        if (gifType == 'plate') {
+            gif.addFrame(plate);
             added++;
-        });
+        } else {
+            await Plotly.toImage(plate, {format: 'jpeg', width: w, height: h}).then(function (dataUrl) {
+                var tmpimg = document.createElement('img');
+                tmpimg.setAttribute('src', dataUrl);
+                gif.addFrame(tmpimg);
+                added++;
+            });
+        }
     }
 
     gif.on('finished', function (blob) {
@@ -281,4 +299,14 @@ function handleFileSelect(evt) {
 }
 
 document.getElementById('files').addEventListener('change', handleFileSelect, false);
-document.getElementById('btn-gif').addEventListener('click', createGif, false);
+document.getElementById('btn-gif').addEventListener('click', function () {
+    modal.show();
+}, false);
+
+var gifBtns = document.querySelectorAll('.gif-btn'), gifBtn, ib;
+for (ib = 0; gifBtn = gifBtns[ib]; ib++) {
+    gifBtn.addEventListener('click', function () {
+        createGif(this.getAttribute('data-gif'));
+    }, false);
+}
+

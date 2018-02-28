@@ -39,7 +39,8 @@
         </div>
         <div class="row py-2">
             <div id="controls" class="btn-group mx-auto d-block fade" role="group" aria-label="Controls">
-                <button id="btn-gif" type="button" class="btn btn-secondary" title="Create video"><i class="fas fa-play"></i></button>
+                <button id="btn-gif" type="button" class="btn btn-secondary" title="Create video"><i
+                    class="fas fa-play"></i></button>
             </div>
         </div>
         <div id="pairs">
@@ -52,10 +53,33 @@
     </div>
 </main>
 
+
+<div id="gif-modal" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Generate GIF</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Pick the image type to use in the GIF.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary gif-btn" data-dismiss="modal" data-gif="plate">Plate</button>
+        <button type="button" class="btn btn-primary gif-btn" data-dismiss="modal" data-gif="heatmap">Heatmap</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/vendor/modernizr-3.5.0.min.js"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.20.1/math.min.js"></script>
 <script src="js/vendor/gif.js"></script>
+<script src="js/vendor/modal.min.js"></script>
 <script src="js/plugins.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/readers.js"></script>
