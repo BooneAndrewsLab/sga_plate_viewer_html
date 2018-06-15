@@ -1,29 +1,21 @@
-var fileData;
-var colorscaleValue = [
-    [0, '#FF0000'],
-    [.5, '#000000'],
-    [1, '#00FF00']
-];
+import {readColony, readGitter} from "./readers.js";
+import * as utils from "./utils.js";
 
-var modal = new Modal({el: document.getElementById('gif-modal')});
-modal.on('show', function (m) {
-    m.el.classList.remove('fade');
-});
-
-modal.on('hide', function (m) {
-    m.el.classList.add('fade');
-});
+let fileData;
+let annotation, annotationIndex;
+let pairs;
 
 function handleImage(f, ele) {
-    var reader = new FileReader();
+    const reader = new FileReader();
 
     // Closure to capture the file information.
-    reader.onload = (function (theFile) {
-        return function (e) {
+    reader.onload = (theFile => {
+        return e => {
             // Resize image to 2x container size for faster loading but still retain some detail
-            resizeImgData(e.target.result, elementInnerWidth(ele.parentElement), function (dataUrl) {
-                ele.innerHTML = ['<img class="img-plate img-fluid" src="', dataUrl,
-                    '" title="', encodeURI(theFile.name), '" />'].join('');
+            utils.resizeImgData(e.target.result, $("#pairs").width(), dataUrl => {
+                ele.innerHTML = `<img class="img-plate img-fluid" 
+                                      src="${dataUrl}" 
+                                      title="${encodeURI(theFile.name)}"/>`;
                 ele.classList.add('show');
                 initNewItem();
             });
@@ -35,27 +27,33 @@ function handleImage(f, ele) {
 }
 
 function handleDat(f, ele) {
-    var reader = new FileReader();
-    var sizes, normalized, div;
-    var name = ele.parentElement.getAttribute('data-pair-name');
+    const reader = new FileReader();
+    let sizes, normalized, div;
+    let name = ele.parentElement.getAttribute('data-pair-name');
+    let plateNum = ele.parentElement.getAttribute('data-plate-num');
 
     reader.onloadend = function (evt) {
-        if (evt.target.readyState === FileReader.DONE) { // DONE == 2
+        if (evt.target.readyState === FileReader.DONE) {
+            let dat;
+
             if (evt.target.result.slice(0, 24) === 'Colony Project Data File') {
-                sizes = readColony(evt.target.result);
+                dat = readColony(evt.target.result);
+                sizes = dat.sizes;
             } else if (evt.target.result.slice(0, 8) === '# gitter') {
                 sizes = readGitter(evt.target.result);
             } else {
                 console.log('Unknown data file format');
                 return;
             }
+            let ad = utils.getArrayData(sizes.length);
 
+            fileData[name]['dat'] = dat;
             fileData[name]['sizes'] = sizes;
 
-            var pmm = calculatePmm(sizes);
+            let pmm = utils.calculatePmm(sizes);
             fileData[name]['pmm'] = pmm;
 
-            normalized = normalizeWithPmmNoClip(sizes, pmm);
+            normalized = utils.normalizeWithPmmNoClip(sizes, pmm);
 
             /* Save pmm in attributes */
             ele.parentElement.setAttribute('data-pmm', pmm);
@@ -63,18 +61,25 @@ function handleDat(f, ele) {
             div = document.createElement('div');
             ele.insertBefore(div, null);
 
-            var data = [{
+            let data = [{
+                x: ad.xAxis,
+                y: ad.yAxis,
                 z: normalized,
+                text: ad.text,
+                hoverinfo: 'text',
                 type: 'heatmap',
-                colorscale: colorscaleValue,
+                colorscale: [
+                    [0, '#FF0000'],
+                    [.5, '#000000'],
+                    [1, '#00FF00']
+                ],
                 showscale: false,
-                hoverinfo: 'none',
                 zauto: false,
                 zmin: -.5,
                 zmax: .5
             }];
 
-            var axisTemplate = {
+            const axisTemplate = {
                 showgrid: false,
                 zeroline: false,
                 linecolor: 'black',
@@ -83,12 +88,12 @@ function handleDat(f, ele) {
                 ticks: ''
             };
 
-            var layout = {
+            const layout = {
                 xaxis: axisTemplate,
                 yaxis: axisTemplate,
                 showlegend: false,
-                width: elementInnerWidth(ele),
-                height: (elementInnerWidth(ele) / 3) * 2,
+                width: $(ele).width(),
+                height: ($(ele).width() / 3) * 2,
                 margin: {
                     l: 0,
                     r: 0,
@@ -102,16 +107,62 @@ function handleDat(f, ele) {
             ele.classList.add('show');
 
             ele.parentElement.addEventListener('updateHeatmap', function (evt) {
-                // if (!!evt.detail['name'] && name !== evt.detail['name']) {
-                data[0]['z'] = math.subtract(
-                    normalizeWithPmmNoClip(sizes, pmm),
-                    normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
-                // } else {
-                //     data[0]['z'] = normalizeWithPmmNoClip(sizes, pmm);
-                // }
+                if (!!evt.detail['name'] && name !== evt.detail['name']) {
+                    data[0]['z'] = math.subtract(
+                        utils.normalizeWithPmmNoClip(sizes, pmm),
+                        utils.normalizeWithPmmNoClip(fileData[evt.detail.name]['sizes'], fileData[evt.detail.name]['pmm']));
+                } else {
+                    data[0]['z'] = utils.normalizeWithPmmNoClip(sizes, pmm);
+                }
 
                 Plotly.update(div, data, layout);
             }, false);
+
+            ele.parentElement.addEventListener('updateAnnotation', function () {
+                let mtrx = math.ones(32, 48);
+
+                for (let i = 0; i < annotation[plateNum].length; i++) {
+                    let item = annotation[plateNum][i];
+                    let row = item.row - 1;
+                    let col = item.col - 1;
+
+                    mtrx._data[row * 2 + 1][col * 2 + 1] = item.text;
+                    mtrx._data[row * 2 + 1][col * 2] = item.text;
+                    mtrx._data[row * 2][col * 2 + 1] = item.text;
+                    mtrx._data[row * 2][col * 2] = item.text;
+                }
+
+                data[0].text = mtrx._data;
+                data[0].hoverinfo = 'text';
+
+                Plotly.update(div, data, layout);
+            });
+
+            div.on('plotly_hover', data => {
+                for (let i = 0; i < data.points.length; i++) {
+                    let point = data.points[i];
+
+                    let update = {
+                        shapes: [{
+                            type: 'rect',
+                            x0: point.x - point.x % 2 - 0.5,
+                            y0: point.y - point.y % 2 - 0.5,
+                            x1: point.x - point.x % 2 + 1.5,
+                            y1: point.y - point.y % 2 + 1.5,
+                            line: {
+                                color: 'rgba(0, 0, 255, 1)',
+                                width: 2
+                            }
+                        }]
+                    };
+
+                    Plotly.relayout(div, update);
+                }
+            });
+
+            div.on('plotly_unhover', () => {
+                Plotly.relayout(div, {shapes: []});
+            });
 
             initNewItem();
         }
@@ -124,14 +175,14 @@ function handleDat(f, ele) {
  * Called when all images and heatmaps are loaded
  */
 function initListeners() {
-    var pairs = document.querySelectorAll('#pairs .row');
-    var i, j, ele, eme;
+    pairs = document.querySelectorAll('#pairs .row');
+    let i, j, ele, eme;
 
     for (i = 0; ele = pairs[i]; i++) {
         /* Use this plate as the reference for other heatmaps */
         ele.addEventListener('click', function () {
             this.classList.toggle("bg-warning");
-            var eventData = {'detail': {}};
+            let eventData = {'detail': {}};
             if (this.classList.contains('bg-warning')) {
                 eventData['detail']['pmm'] = this.getAttribute('data-pmm');
                 eventData['detail']['name'] = this.getAttribute('data-pair-name');
@@ -143,61 +194,11 @@ function initListeners() {
                     eme.classList.remove("bg-warning");
                 }
 
-                var event = new CustomEvent('updateHeatmap', eventData);
+                let event = new CustomEvent('updateHeatmap', eventData);
                 eme.dispatchEvent(event);
             }
         }, false);
     }
-}
-
-async function createGif(gifType) {
-    var gif = null;
-    var i, added = 0, w, h;
-    var plates, plate;
-    if (gifType == 'plate') {
-        plates = document.querySelectorAll('.img-plate');
-    } else {
-        plates = document.querySelectorAll("[data-plate-type=heatmap] > div");
-    }
-
-    if (plates.length == 0) {
-        return;
-    }
-
-    for (i = 0; plate = plates[i]; i++) {
-        if (gif == null) {
-            w = elementInnerWidth(plate) * 2;
-            h = elementInnerHeight(plate) * 2;
-            gif = new GIF({
-                workerScript: 'js/vendor/gif.worker.js',
-                quality: 10,
-                width: w,
-                height: h,
-                debug: true
-            });
-        }
-
-        if (gifType == 'plate') {
-            gif.addFrame(plate);
-            added++;
-        } else {
-            await Plotly.toImage(plate, {format: 'jpeg', width: w, height: h}).then(function (dataUrl) {
-                var tmpimg = document.createElement('img');
-                tmpimg.setAttribute('src', dataUrl);
-                gif.addFrame(tmpimg);
-                added++;
-            });
-        }
-    }
-
-    gif.on('finished', function (blob) {
-        document.getElementById('gif').setAttribute('src', URL.createObjectURL(blob));
-        setTimeout(function () {
-            document.getElementById('gif').scrollIntoView({behavior: "smooth", block: "center", inline: "end"});
-        }, 1000);
-    });
-
-    gif.render();
 }
 
 /**
@@ -205,17 +206,17 @@ async function createGif(gifType) {
  */
 function initNewItem() {
     setTimeout(function () {
-        var ele = document.querySelector('.new-plate');
+        let ele = document.querySelector('.new-plate');
         if (!ele) {
             initListeners();
-            setState('ready');
+            utils.setState('ready');
             return;
         }
 
         ele.classList.remove('new-plate');
 
-        var name = ele.parentElement.getAttribute('data-pair-name');
-        var data = fileData[name];
+        let name = ele.parentElement.getAttribute('data-pair-name');
+        let data = fileData[name];
 
         document.getElementById(encodeURI(name)).classList.add('show');
 
@@ -239,11 +240,12 @@ function initNewItem() {
 }
 
 function handleFileSelect(evt) {
-    var files = evt.target.files; // FileList object
-    var base, names = [], data, i, f, name, tally = {'images': 0, 'dats': 0}, colSize;
-    var pairsParent, div, inner;
+    const files = evt.target.files; // FileList object
+    let base, names = [], data, tally = {'images': 0, 'dats': 0}, colSize;
+    let plateNum, match;
+    let pairsParent, div, inner;
 
-    setState('loading');
+    utils.setState('loading');
 
     document.getElementById('gif').src = "";
 
@@ -251,8 +253,8 @@ function handleFileSelect(evt) {
     pairsParent.innerHTML = ''; // Clear element
     fileData = {};
 
-    for (i = 0; f = files[i]; i++) {
-        base = getBaseName(f.name);
+    for (let i = 0, f; f = files[i]; i++) {
+        base = utils.getBaseName(f.name);
 
         if (!fileData.hasOwnProperty(base)) {
             fileData[base] = {};
@@ -272,25 +274,32 @@ function handleFileSelect(evt) {
 
     colSize = tally['images'] && tally['dats'] ? '6' : '12';
 
-    for (i = 0; name = names[i]; i++) {
+    for (let i = 0, name; name = names[i]; i++) {
         data = fileData[name];
+        plateNum = '0';
+
+        match = /_(plate|p)?(\d+)_/gi.exec(name);
+        if (match != null) {
+            plateNum = match[2];
+        }
 
         div = document.createElement('div');
         div.classList.add('row');
         div.classList.add('py-2');
         div.setAttribute('data-pair-name', name);
+        div.setAttribute('data-plate-num', plateNum);
 
-        inner = ['<div class="col-sm-12 fade" id="', encodeURI(name), '"><div><span class="h4">', name, '</span><a href="#" class="h4 float-right fas fa-bullseye hidden"></a></div></div>'];
+        inner = `<div class="col-sm-12 fade" id="${encodeURI(name)}"><div><span class="h4">${name}</span></div></div>`;
 
         if (tally['images']) {
-            inner = inner.concat(['<div class="col-sm-', colSize, ' fade new-plate" data-plate-type="image" id="', encodeURI(name), '-image"></div>']);
+            inner += `<div class="col-sm-${colSize} fade new-plate" data-plate-type="image" id="${encodeURI(name)}-image"></div>`;
         }
 
         if (tally['dats']) {
-            inner = inner.concat(['<div class="col-sm-', colSize, ' fade new-plate" data-plate-type="heatmap" id="', encodeURI(name), '-heatmap"></div>'])
+            inner += `<div class="col-sm-${colSize} fade new-plate" data-plate-type="heatmap" id="${encodeURI(name)}-heatmap"></div>`;
         }
 
-        div.innerHTML = inner.join('');
+        div.innerHTML = inner;
 
         pairsParent.insertBefore(div, null);
     }
@@ -298,15 +307,88 @@ function handleFileSelect(evt) {
     initNewItem();
 }
 
-document.getElementById('files').addEventListener('change', handleFileSelect, false);
-document.getElementById('btn-gif').addEventListener('click', function () {
-    modal.show();
-}, false);
+function dispatchAnnotationChange() {
+    let i, ele;
+    let event = new CustomEvent('updateAnnotation', annotation);
 
-var gifBtns = document.querySelectorAll('.gif-btn'), gifBtn, ib;
-for (ib = 0; gifBtn = gifBtns[ib]; ib++) {
-    gifBtn.addEventListener('click', function () {
-        createGif(this.getAttribute('data-gif'));
-    }, false);
+    for (i = 0; ele = pairs[i]; i++) {
+        ele.dispatchEvent(event);
+    }
 }
 
+function handleAnnotation() {
+    let ele = $(this);
+    let url = ele.attr("data-json");
+    let genesList = $('#search-genes');
+
+    genesList.val(null).trigger('change').prop("disabled", true);
+
+    $.getJSON(url, function (data) {
+        annotation = data;
+        annotationIndex = {};
+        dispatchAnnotationChange();
+
+        let i, j;
+        let strains = [];
+
+        for (i in annotation) {
+            if (!annotation.hasOwnProperty(i)) {
+                continue;
+            }
+
+            for (j = 0; j < annotation[i].length; j++) {
+                if (strains.indexOf(annotation[i][j].text) === -1) {
+                    strains.push(annotation[i][j].text);
+                    annotationIndex[annotation[i][j].text] = [];
+                }
+
+                annotationIndex[annotation[i][j].text].push({plate: i, item: j});
+            }
+        }
+
+        for (i = 0; i < strains.length; i++) {
+            let newOption = new Option(strains[i], strains[i], false, false);
+            genesList.append(newOption);
+        }
+
+        genesList.trigger('change').prop("disabled", false);
+    });
+}
+
+(function () {
+    const modal = new Modal({el: document.getElementById('gif-modal')});
+    modal.on('show', function (m) {
+        m.el.classList.remove('fade');
+    });
+
+    modal.on('hide', function (m) {
+        m.el.classList.add('fade');
+    });
+
+    document.getElementById('files').addEventListener('change', handleFileSelect, false);
+    document.getElementById('btn-gif').addEventListener('click', () => {
+        modal.show();
+    }, false);
+
+    let gifBtns = document.querySelectorAll('.gif-btn');
+    for (let ib = 0, gifBtn; gifBtn = gifBtns[ib]; ib++) {
+        gifBtn.addEventListener('click', function () {
+            utils.createGif(this.getAttribute('data-gif')).then(() => {
+                console.log("Gif created");
+            });
+        }, false);
+    }
+
+    let arrays = document.querySelectorAll('#annotate-array a');
+    for (let i = 0, ele; ele = arrays[i]; i++) {
+        ele.addEventListener('click', handleAnnotation, false);
+    }
+
+    $('#search-genes').select2({
+        theme: "bootstrap",
+        placeholder: "Search for a gene",
+        disabled: true,
+        width: 'style',
+        dropdownAutoWidth: true
+    });
+})();

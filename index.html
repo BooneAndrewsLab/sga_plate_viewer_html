@@ -13,10 +13,12 @@
 
     <link rel="stylesheet" href="css/normalize.css">
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-    <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
-
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css"
+          integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/select2-bootstrap.min.css">
 </head>
 <body>
 <!--[if lte IE 9]>
@@ -41,6 +43,23 @@
             <div id="controls" class="btn-group mx-auto d-block fade" role="group" aria-label="Controls">
                 <button id="btn-gif" type="button" class="btn btn-secondary" title="Create video"><i
                     class="fas fa-play"></i></button>
+
+                <div class="btn-group dropdown" role="group">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="arrayDropdown"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Annotate array plates
+                    </button>
+
+                    <div id="annotate-array" class="dropdown-menu" aria-labelledby="arrayDropdown">
+                        <a class="dropdown-item" data-json="./files/arrays/array_fg.json" href="#">Full genome array
+                            (FG)</a>
+                        <a class="dropdown-item" data-json="./files/arrays/array_ts.json" href="#">Essential array
+                            (TS)</a>
+                    </div>
+                </div>
+
+                <select id="search-genes" class="form-control btn-group" title="Gene search">
+                </select>
             </div>
         </div>
         <div id="pairs">
@@ -55,34 +74,44 @@
 
 
 <div id="gif-modal" class="modal fade" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Generate GIF</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <p>Pick the image type to use in the GIF.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary gif-btn" data-dismiss="modal" data-gif="plate">Plate</button>
-        <button type="button" class="btn btn-primary gif-btn" data-dismiss="modal" data-gif="heatmap">Heatmap</button>
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-      </div>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate GIF</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Pick the image type to use in the GIF.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary gif-btn" data-dismiss="modal" data-gif="plate">Plate
+                </button>
+                <button type="button" class="btn btn-primary gif-btn" data-dismiss="modal" data-gif="heatmap">Heatmap
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <script src="js/vendor/modernizr-3.5.0.min.js"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.20.1/math.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"
+        integrity="sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"
+        integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
 <script src="js/vendor/gif.js"></script>
 <script src="js/vendor/modal.min.js"></script>
 <script src="js/plugins.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/readers.js"></script>
-<script src="js/main.js"></script>
+<script src="js/main.js" type="module"></script>
 </body>
 </html>

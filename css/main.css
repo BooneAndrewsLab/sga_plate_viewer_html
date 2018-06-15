@@ -289,3 +289,12 @@ a.fas:hover {
     -o-transition: background-color .2s;
     transition: background-color .2s;
 }
+
+#controls .select2-selection.select2-selection--single {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.select2-container--bootstrap {
+    display: inline-block !important;
+}
