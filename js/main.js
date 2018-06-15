@@ -7,16 +7,18 @@ let pairs;
 
 function handleImage(f, ele) {
     const reader = new FileReader();
+    let name = $(ele).parent().data('pair-name');
 
     // Closure to capture the file information.
     reader.onload = (theFile => {
         return e => {
             // Resize image to 2x container size for faster loading but still retain some detail
-            utils.resizeImgData(e.target.result, $("#pairs").width(), dataUrl => {
+            utils.resizeImgData(e.target.result, $("#pairs").width(), (dataUrl, imageData) => {
                 ele.innerHTML = `<img class="img-plate img-fluid" 
                                       src="${dataUrl}" 
                                       title="${encodeURI(theFile.name)}"/>`;
                 ele.classList.add('show');
+                fileData[name]["imageData"] = imageData;
                 initNewItem();
             });
         };
@@ -26,19 +28,39 @@ function handleImage(f, ele) {
     reader.readAsDataURL(f);
 }
 
+function addImageOverlay(data, ele, name) {
+    let fd = fileData[name]["imageData"];
+    let img = $(ele).find('[data-plate-type=image]');
+    img.append("<canvas class='image-overlay'>");
+
+    let scalingRatio = img.find("img").width() / fd.imageWidth;
+    let paddingLeft = parseInt(img.css("padding-left").replace("px", ""));
+
+    let overlay = img.find("canvas");
+    overlay.css({
+        position: "absolute",
+        top: data.y0 * scalingRatio,
+        left: paddingLeft + data.x0 * scalingRatio,
+        height: (data.y1 - data.y0) * scalingRatio,
+        width: (data.x1 - data.x0) * scalingRatio
+    });
+}
+
 function handleDat(f, ele) {
     const reader = new FileReader();
     let sizes, normalized, div;
-    let name = ele.parentElement.getAttribute('data-pair-name');
-    let plateNum = ele.parentElement.getAttribute('data-plate-num');
+    let name = $(ele).parent().data('pair-name');
+    let plateNum = $(ele).parent().data('plate-num');
 
     reader.onloadend = function (evt) {
         if (evt.target.readyState === FileReader.DONE) {
             let dat;
+            let markedStrains = [];
 
             if (evt.target.result.slice(0, 24) === 'Colony Project Data File') {
                 dat = readColony(evt.target.result);
                 sizes = dat.sizes;
+                addImageOverlay(dat, ele.parentElement, name);
             } else if (evt.target.result.slice(0, 8) === '# gitter') {
                 sizes = readGitter(evt.target.result);
             } else {
@@ -118,12 +140,39 @@ function handleDat(f, ele) {
                 Plotly.update(div, data, layout);
             }, false);
 
+            ele.parentElement.addEventListener('markStrain', function (evt) {
+                if (evt.detail == null) {
+                    markedStrains = [];
+                } else {
+                    let searched = annotation[evt.detail.plate][evt.detail.item];
+                    let row = 17 - searched.row;
+
+                    markedStrains.push({
+                        type: 'rect',
+                        x0: searched.col * 2 - 2.5,
+                        y0: row * 2 - 2.5,
+                        x1: searched.col * 2 - .5,
+                        y1: row * 2 - .5,
+                        line: {
+                            color: 'rgba(255, 255, 0, 1)',
+                            width: 3
+                        }
+                    });
+                }
+
+                let update = {
+                    shapes: markedStrains
+                };
+
+                Plotly.relayout(div, update);
+            });
+
             ele.parentElement.addEventListener('updateAnnotation', function () {
                 let mtrx = math.ones(32, 48);
 
                 for (let i = 0; i < annotation[plateNum].length; i++) {
                     let item = annotation[plateNum][i];
-                    let row = item.row - 1;
+                    let row = 16 - item.row;
                     let col = item.col - 1;
 
                     mtrx._data[row * 2 + 1][col * 2 + 1] = item.text;
@@ -156,12 +205,14 @@ function handleDat(f, ele) {
                         }]
                     };
 
+                    update.shapes = [...update.shapes, ...markedStrains];
+
                     Plotly.relayout(div, update);
                 }
             });
 
             div.on('plotly_unhover', () => {
-                Plotly.relayout(div, {shapes: []});
+                Plotly.relayout(div, {shapes: markedStrains});
             });
 
             initNewItem();
@@ -320,6 +371,8 @@ function handleAnnotation() {
     let ele = $(this);
     let url = ele.attr("data-json");
     let genesList = $('#search-genes');
+    // noinspection JSUnresolvedFunction
+    let plates = $("[data-plate-num]").map((_, e) => e.getAttribute('data-plate-num')).get();
 
     genesList.val(null).trigger('change').prop("disabled", true);
 
@@ -332,7 +385,7 @@ function handleAnnotation() {
         let strains = [];
 
         for (i in annotation) {
-            if (!annotation.hasOwnProperty(i)) {
+            if (!annotation.hasOwnProperty(i) || plates.indexOf(i) === -1) {
                 continue;
             }
 
@@ -351,7 +404,15 @@ function handleAnnotation() {
             genesList.append(newOption);
         }
 
-        genesList.trigger('change').prop("disabled", false);
+        genesList.val(null).trigger('change').prop("disabled", false);
+    });
+}
+
+function clearSearch() {
+    let event = new CustomEvent('markStrain', {detail: null});
+
+    $(`#pairs > div`).each((_, ele) => {
+        ele.dispatchEvent(event);
     });
 }
 
@@ -389,6 +450,21 @@ function handleAnnotation() {
         placeholder: "Search for a gene",
         disabled: true,
         width: 'style',
-        dropdownAutoWidth: true
+        dropdownAutoWidth: true,
+        allowClear: true
+    }).on('select2:select', e => {
+        let data = annotationIndex[e.params.data.text];
+
+        clearSearch();
+
+        for (let i = 0, loc; loc = data[i]; i++) {
+            let event = new CustomEvent('markStrain', {detail: loc});
+
+            $(`#pairs > div[data-plate-num=${loc['plate']}]`).each((_, ele) => {
+                ele.dispatchEvent(event);
+            });
+        }
+    }).on('select2:unselect', () => {
+        clearSearch();
     });
 })();

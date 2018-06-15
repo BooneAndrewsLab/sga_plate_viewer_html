@@ -128,7 +128,10 @@ export function resizeImgData(dataUrl, targetWidth, callback) {
         ctx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5,
             0, 0, canvas.width, canvas.height);
 
-        callback(canvas.toDataURL());
+        callback(canvas.toDataURL(), {
+            imageHeight: img.height,
+            imageWidth: img.width
+        });
     };
     img.src = dataUrl;
 }
