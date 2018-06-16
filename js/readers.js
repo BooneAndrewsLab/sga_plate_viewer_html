@@ -12,19 +12,19 @@ export function readColony(data) {
     }
 
     let [x0, x1, y0, y1] = lines[7].match(/[^\s]+/g).map(v => parseInt(v));
+    let [x, y] = lines[11].match(/[^\s]+/g).map(v => parseInt(v));
 
     for (let i = 13, l; l = lines[i]; i++) {
         l = l.match(/[^\s]+/g);
         sizes[rows - parseInt(l[0])][parseInt(l[1]) - 1] = parseInt(l[2]);
     }
 
-    return {sizes, x0, y0, x1, y1};
+    return {sizes, x0, y0, x1, y1, x, y};
 }
 
 export function readGitter(data) {
     let lines = data.match(/[^\r\n]+/g);
     let headerSize = 0;
-    let arraySize = lines.length - headerSize;
     let sizes, rows;
 
     for (let i = 0, l; l = lines[i]; i++) {
@@ -34,6 +34,8 @@ export function readGitter(data) {
             break;
         }
     }
+
+    let arraySize = lines.length - headerSize;
 
     if (arraySize === 1536) {
         sizes = math.zeros(32, 48)._data;

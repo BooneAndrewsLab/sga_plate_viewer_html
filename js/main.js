@@ -28,21 +28,101 @@ function handleImage(f, ele) {
     reader.readAsDataURL(f);
 }
 
+function markCoordinate(ele, name, row = null, col = null) {
+    let hasImage = $(ele).find("canvas").length > 0;
+
+    if (hasImage) {
+        let ctx = $(ele).find("canvas")[0].getContext("2d");
+        let fd = fileData[name]["imageData"];
+        let wmargin = fd.wstep / 8;
+        let hmargin = fd.hstep / 8;
+
+        ctx.clearRect(0, 0, fd.gridWidth, fd.gridHeight);
+
+        function drawSquare(r, c, colour) {
+            ctx.strokeStyle = colour;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                Math.max(c * fd.wstep - wmargin, 0),
+                Math.max(r * fd.hstep - hmargin, 0),
+                Math.min(fd.wstep + wmargin * 2, fd.gridWidth - (c * fd.wstep - wmargin) - 1),
+                Math.min(fd.hstep + hmargin * 2, fd.gridHeight - (r * fd.hstep - hmargin) - 1)
+            );
+        }
+
+        fileData[name].markedStrains.map((e) => {
+            drawSquare(e.imageRow, e.imageCol, "#FF0");
+        });
+
+        if (row != null) {
+            drawSquare(row, col, "#00F");
+        }
+    }
+
+    let pltDiv = $(ele).find(".js-plotly-plot")[0];
+    let fd = fileData[name];
+    let update = {
+        shapes: [...fd.markedStrains]
+    };
+
+    if (row != null) {
+        update.shapes.push({
+            type: 'rect',
+            x0: col * 2 - 0.5,
+            y0: (15 - row) * 2 - 0.5,
+            x1: col * 2 + 1.5,
+            y1: (15 - row) * 2 + 1.5,
+            line: {
+                color: 'rgba(0, 0, 255, 1)',
+                width: 2
+            }
+        });
+    }
+
+    Plotly.relayout(pltDiv, update);
+}
+
 function addImageOverlay(data, ele, name) {
     let fd = fileData[name]["imageData"];
     let img = $(ele).find('[data-plate-type=image]');
-    img.append("<canvas class='image-overlay'>");
+
+    if (img.length === 0) {
+        return;
+    }
 
     let scalingRatio = img.find("img").width() / fd.imageWidth;
     let paddingLeft = parseInt(img.css("padding-left").replace("px", ""));
 
+    fd.gridWidth = (data.x1 - data.x0) * .862 * scalingRatio;
+    fd.gridHeight = (data.y1 - data.y0) * .855 * scalingRatio;
+
+    // Size of one window
+    fd.wstep = fd.gridWidth / 24;
+    fd.hstep = fd.gridHeight / 16;
+
+    img.append(`<canvas class="image-overlay" width="${fd.gridWidth}" height="${fd.gridHeight}">`);
     let overlay = img.find("canvas");
     overlay.css({
         position: "absolute",
-        top: data.y0 * scalingRatio,
-        left: paddingLeft + data.x0 * scalingRatio,
-        height: (data.y1 - data.y0) * scalingRatio,
-        width: (data.x1 - data.x0) * scalingRatio
+        top: data.y * scalingRatio - fd.hstep / 4,
+        left: paddingLeft + data.x * scalingRatio - fd.wstep / 4,
+    });
+
+    let lastCol = -1, lastRow = -1;
+
+    overlay.mousemove((evt) => {
+        let col = Math.floor(evt.offsetX / fd.wstep);
+        let row = Math.floor(evt.offsetY / fd.hstep);
+
+        if (col === lastCol && row === lastRow) return;
+
+        markCoordinate(ele, name, row, col);
+
+        lastCol = col;
+        lastRow = row;
+    }).mouseout(() => {
+        markCoordinate(ele, name);
+        lastCol = lastRow = -1;
     });
 }
 
@@ -51,11 +131,13 @@ function handleDat(f, ele) {
     let sizes, normalized, div;
     let name = $(ele).parent().data('pair-name');
     let plateNum = $(ele).parent().data('plate-num');
+    let fd = fileData[name];
 
     reader.onloadend = function (evt) {
         if (evt.target.readyState === FileReader.DONE) {
             let dat;
-            let markedStrains = [];
+            fd.markedStrains = [];
+            div = document.createElement('div');
 
             if (evt.target.result.slice(0, 24) === 'Colony Project Data File') {
                 dat = readColony(evt.target.result);
@@ -69,18 +151,17 @@ function handleDat(f, ele) {
             }
             let ad = utils.getArrayData(sizes.length);
 
-            fileData[name]['dat'] = dat;
-            fileData[name]['sizes'] = sizes;
+            fd['dat'] = dat;
+            fd['sizes'] = sizes;
 
             let pmm = utils.calculatePmm(sizes);
-            fileData[name]['pmm'] = pmm;
+            fd['pmm'] = pmm;
 
             normalized = utils.normalizeWithPmmNoClip(sizes, pmm);
 
             /* Save pmm in attributes */
             ele.parentElement.setAttribute('data-pmm', pmm);
 
-            div = document.createElement('div');
             ele.insertBefore(div, null);
 
             let data = [{
@@ -142,12 +223,12 @@ function handleDat(f, ele) {
 
             ele.parentElement.addEventListener('markStrain', function (evt) {
                 if (evt.detail == null) {
-                    markedStrains = [];
+                    fd.markedStrains = [];
                 } else {
                     let searched = annotation[evt.detail.plate][evt.detail.item];
                     let row = 17 - searched.row;
 
-                    markedStrains.push({
+                    fd.markedStrains.push({
                         type: 'rect',
                         x0: searched.col * 2 - 2.5,
                         y0: row * 2 - 2.5,
@@ -156,15 +237,18 @@ function handleDat(f, ele) {
                         line: {
                             color: 'rgba(255, 255, 0, 1)',
                             width: 3
-                        }
+                        },
+                        imageRow: searched.row - 1,
+                        imageCol: searched.col - 1
                     });
                 }
 
-                let update = {
-                    shapes: markedStrains
-                };
-
-                Plotly.relayout(div, update);
+                markCoordinate(ele.parentElement, name);
+                // let update = {
+                //     shapes: fd.markedStrains
+                // };
+                //
+                // Plotly.relayout(div, update);
             });
 
             ele.parentElement.addEventListener('updateAnnotation', function () {
@@ -190,29 +274,12 @@ function handleDat(f, ele) {
             div.on('plotly_hover', data => {
                 for (let i = 0; i < data.points.length; i++) {
                     let point = data.points[i];
-
-                    let update = {
-                        shapes: [{
-                            type: 'rect',
-                            x0: point.x - point.x % 2 - 0.5,
-                            y0: point.y - point.y % 2 - 0.5,
-                            x1: point.x - point.x % 2 + 1.5,
-                            y1: point.y - point.y % 2 + 1.5,
-                            line: {
-                                color: 'rgba(0, 0, 255, 1)',
-                                width: 2
-                            }
-                        }]
-                    };
-
-                    update.shapes = [...update.shapes, ...markedStrains];
-
-                    Plotly.relayout(div, update);
+                    markCoordinate(ele.parentElement, name, 15 - Math.floor(point.y / 2), Math.floor(point.x / 2))
                 }
             });
 
             div.on('plotly_unhover', () => {
-                Plotly.relayout(div, {shapes: markedStrains});
+                markCoordinate(ele.parentElement, name)
             });
 
             initNewItem();
@@ -292,13 +359,16 @@ function initNewItem() {
 
 function handleFileSelect(evt) {
     const files = evt.target.files; // FileList object
+    const numRe = /_(plate|p)?(\d+)_?/gi;
     let base, names = [], data, tally = {'images': 0, 'dats': 0}, colSize;
-    let plateNum, match;
+    let plateNum;
     let pairsParent, div, inner;
 
     utils.setState('loading');
 
     document.getElementById('gif').src = "";
+    annotation = null;
+    annotationIndex = null;
 
     pairsParent = document.getElementById('pairs');
     pairsParent.innerHTML = ''; // Clear element
@@ -327,11 +397,14 @@ function handleFileSelect(evt) {
 
     for (let i = 0, name; name = names[i]; i++) {
         data = fileData[name];
-        plateNum = '0';
+        plateNum = '1';
 
-        match = /_(plate|p)?(\d+)_/gi.exec(name);
-        if (match != null) {
-            plateNum = match[2];
+        let numCandidate;
+
+        while ((numCandidate = numRe.exec(name)) !== null) {
+            if (parseInt(numCandidate) < 20) { // Most likely not a plate number
+                plateNum = numCandidate;
+            }
         }
 
         div = document.createElement('div');
@@ -340,7 +413,11 @@ function handleFileSelect(evt) {
         div.setAttribute('data-pair-name', name);
         div.setAttribute('data-plate-num', plateNum);
 
-        inner = `<div class="col-sm-12 fade" id="${encodeURI(name)}"><div><span class="h4">${name}</span></div></div>`;
+        inner = `<div class="col-sm-12 fade" id="${encodeURI(name)}">
+                    <div>
+                        <span class="h4">${name}</span>
+                    </div>
+                 </div>`;
 
         if (tally['images']) {
             inner += `<div class="col-sm-${colSize} fade new-plate" data-plate-type="image" id="${encodeURI(name)}-image"></div>`;
@@ -374,7 +451,7 @@ function handleAnnotation() {
     // noinspection JSUnresolvedFunction
     let plates = $("[data-plate-num]").map((_, e) => e.getAttribute('data-plate-num')).get();
 
-    genesList.val(null).trigger('change').prop("disabled", true);
+    genesList.val(null).html("").trigger('change').prop("disabled", true);
 
     $.getJSON(url, function (data) {
         annotation = data;
@@ -411,7 +488,7 @@ function handleAnnotation() {
 function clearSearch() {
     let event = new CustomEvent('markStrain', {detail: null});
 
-    $(`#pairs > div`).each((_, ele) => {
+    $(`#pairs`).find(`> div`).each((_, ele) => {
         ele.dispatchEvent(event);
     });
 }
@@ -442,6 +519,7 @@ function clearSearch() {
 
     let arrays = document.querySelectorAll('#annotate-array a');
     for (let i = 0, ele; ele = arrays[i]; i++) {
+        // noinspection JSUnresolvedFunction
         ele.addEventListener('click', handleAnnotation, false);
     }
 
@@ -460,7 +538,7 @@ function clearSearch() {
         for (let i = 0, loc; loc = data[i]; i++) {
             let event = new CustomEvent('markStrain', {detail: loc});
 
-            $(`#pairs > div[data-plate-num=${loc['plate']}]`).each((_, ele) => {
+            $(`#pairs`).find(`> div[data-plate-num=${loc['plate']}]`).each((_, ele) => {
                 ele.dispatchEvent(event);
             });
         }
