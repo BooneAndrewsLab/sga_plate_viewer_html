@@ -402,8 +402,8 @@ function handleFileSelect(evt) {
         let numCandidate;
 
         while ((numCandidate = numRe.exec(name)) !== null) {
-            if (parseInt(numCandidate) < 20) { // Most likely not a plate number
-                plateNum = numCandidate;
+            if (parseInt(numCandidate[2]) < 20) { // Most likely not a plate number
+                plateNum = parseInt(numCandidate[2]).toString();
             }
         }
 
