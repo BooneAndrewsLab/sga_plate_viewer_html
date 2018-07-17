@@ -4,6 +4,7 @@ import * as utils from "./utils.js";
 let fileData;
 let annotation, annotationIndex;
 let pairs;
+let linkages;
 
 function handleImage(f, ele) {
     const reader = new FileReader();
@@ -158,6 +159,7 @@ function handleDat(f, ele) {
             fd['pmm'] = pmm;
 
             normalized = utils.normalizeWithPmmNoClip(sizes, pmm);
+            fd['normalized'] = normalized;
 
             /* Save pmm in attributes */
             ele.parentElement.setAttribute('data-pmm', pmm);
@@ -244,11 +246,6 @@ function handleDat(f, ele) {
                 }
 
                 markCoordinate(ele.parentElement, name);
-                // let update = {
-                //     shapes: fd.markedStrains
-                // };
-                //
-                // Plotly.relayout(div, update);
             });
 
             ele.parentElement.addEventListener('updateAnnotation', function () {
@@ -263,6 +260,20 @@ function handleDat(f, ele) {
                     mtrx._data[row * 2 + 1][col * 2] = item.text;
                     mtrx._data[row * 2][col * 2 + 1] = item.text;
                     mtrx._data[row * 2][col * 2] = item.text;
+
+                    if (linkages.hasOwnProperty(item.c)) {
+                        let avgnorm = (
+                            normalized[row * 2 + 1][col * 2 + 1] +
+                            normalized[row * 2 + 1][col * 2] +
+                            normalized[row * 2][col * 2 + 1] +
+                            normalized[row * 2][col * 2]) / 4;
+
+                        if (!linkages[item.c].hasOwnProperty(item.text)) {
+                            linkages[item.c][item.text] = {loc: item.l, vals: []};
+                        }
+
+                        linkages[item.c][item.text].vals.push(avgnorm);
+                    }
                 }
 
                 data[0].text = mtrx._data;
@@ -452,14 +463,22 @@ function handleAnnotation() {
     let plates = $("[data-plate-num]").map((_, e) => e.getAttribute('data-plate-num')).get();
 
     genesList.val(null).html("").trigger('change').prop("disabled", true);
+    $('#btn-linkage').prop("disabled", true);
+    $('#linkages').html("");
 
     $.getJSON(url, function (data) {
+        let i, j, chrom;
+        let strains = [];
+
         annotation = data;
         annotationIndex = {};
-        dispatchAnnotationChange();
+        linkages = {};
 
-        let i, j;
-        let strains = [];
+        for (chrom = 0; chrom < 16; chrom++) { // Chromosomes
+            linkages[chrom + 1] = {};
+        }
+
+        dispatchAnnotationChange();
 
         for (i in annotation) {
             if (!annotation.hasOwnProperty(i) || plates.indexOf(i) === -1) {
@@ -482,6 +501,7 @@ function handleAnnotation() {
         }
 
         genesList.val(null).trigger('change').prop("disabled", false);
+        $('#btn-linkage').prop("disabled", false);
     });
 }
 
@@ -506,6 +526,59 @@ function clearSearch() {
     document.getElementById('files').addEventListener('change', handleFileSelect, false);
     document.getElementById('btn-gif').addEventListener('click', () => {
         modal.show();
+    }, false);
+    document.getElementById('btn-linkage').addEventListener('click', () => {
+        let ele = $('#linkages');
+        ele.html("");
+        for (let chrom in linkages) {
+            if (linkages.hasOwnProperty(chrom)) {
+                let trace1 = {
+                    x: [],
+                    y: [],
+                    text: [],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: {shape: 'spline'}
+                };
+
+                let sortable = [];
+                for (let gene in linkages[chrom]) {
+                    if (linkages[chrom].hasOwnProperty(gene)) {
+                        let geneData = linkages[chrom][gene];
+                        sortable.push([geneData.loc, math.mean(geneData.vals), gene]);
+                    }
+                }
+
+                if (sortable.length < 3) {
+                    continue;
+                }
+
+                sortable.sort((a, b) => a[0] - b[0]);
+
+                sortable.forEach(function (item) {
+                    trace1.x.push(item[0]);
+                    trace1.y.push(item[1]);
+                    trace1.text.push(item[2]);
+                });
+
+                ele.append(`<div class="row">
+                                         <div id="chromosome-${chrom}"></div>
+                                       </div>`);
+                Plotly.newPlot(`chromosome-${chrom}`, [trace1], {
+                    title: `Chromosome ${chrom}`,
+                    xaxis: {
+                        range: [0, 1600000],
+                        autorange: false
+                    },
+                    yaxis: {
+                        range: [-2, 2],
+                        autorange: false
+                    },
+                    width: $(`#chromosome-${chrom}`).parent().width(),
+                    height: $(`#chromosome-${chrom}`).parent().width() / 2,
+                });
+            }
+        }
     }, false);
 
     let gifBtns = document.querySelectorAll('.gif-btn');

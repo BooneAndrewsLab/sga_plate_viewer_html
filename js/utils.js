@@ -88,6 +88,7 @@ export function setState(state) {
             ele.children[0].className = 'fas fa-sync fa-spin';
             controls.classList.remove('show');
             $('#search-genes').val(null).html("").trigger('change').prop("disabled", true);
+            $('#linkages').html("");
             break;
         case "ready":
             ele.classList.remove('bg-warning');
