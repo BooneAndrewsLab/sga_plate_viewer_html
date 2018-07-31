@@ -52,3 +52,25 @@ export function readGitter(data) {
 
     return sizes;
 }
+
+export function readPyGitterV1(data) {
+    let lines = data.match(/[^\r\n]+/g);
+    let arraySize = lines.length - 5;
+    let sizes, rows;
+
+    if (arraySize === 1536) {
+        sizes = math.zeros(32, 48)._data;
+        rows = 32;
+    } else if (arraySize === 384) {
+        sizes = math.zeros(16, 24)._data;
+        rows = 16;
+    }
+
+    for (let i = 5, l; l = lines[i]; i++) {
+        l = l.match(/[^\s]+/g);
+        console.log(parseInt(l[0]), parseInt(l[1]), parseInt(l[2]));
+        sizes[rows - parseInt(l[1])][parseInt(l[0]) - 1] = parseInt(l[2]);
+    }
+
+    return sizes;
+}

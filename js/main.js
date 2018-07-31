@@ -1,4 +1,4 @@
-import {readColony, readGitter} from "./readers.js";
+import {readColony, readGitter, readPyGitterV1} from "./readers.js";
 import * as utils from "./utils.js";
 
 let fileData;
@@ -146,6 +146,8 @@ function handleDat(f, ele) {
                 addImageOverlay(dat, ele.parentElement, name);
             } else if (evt.target.result.slice(0, 8) === '# gitter') {
                 sizes = readGitter(evt.target.result);
+            } else if (evt.target.result.slice(0, 20) === '#Dat-format-version:') {
+                sizes = readPyGitterV1(evt.target.result);
             } else {
                 console.log('Unknown data file format');
                 return;
@@ -370,7 +372,7 @@ function initNewItem() {
 
 function handleFileSelect(evt) {
     const files = evt.target.files; // FileList object
-    const numRe = /_(plate|p)?(\d+)_?/gi;
+    const numRe = /_(plate|p)?(\d+)_/gi;
     let base, names = [], data, tally = {'images': 0, 'dats': 0}, colSize;
     let plateNum;
     let pairsParent, div, inner;
