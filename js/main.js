@@ -29,34 +29,35 @@ function handleImage(f, ele) {
     reader.readAsDataURL(f);
 }
 
+function drawSquare(ctx, r, c, colour, fd) {
+    let wmargin = fd.wstep / 8;
+    let hmargin = fd.hstep / 8;
+
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+        Math.max(c * fd.wstep - wmargin, 0),
+        Math.max(r * fd.hstep - hmargin, 0),
+        Math.min(fd.wstep + wmargin * 2, fd.gridWidth - (c * fd.wstep - wmargin) - 1),
+        Math.min(fd.hstep + hmargin * 2, fd.gridHeight - (r * fd.hstep - hmargin) - 1)
+    );
+}
+
 function markCoordinate(ele, name, row = null, col = null) {
     let hasImage = $(ele).find("canvas").length > 0;
 
     if (hasImage) {
         let ctx = $(ele).find("canvas")[0].getContext("2d");
         let fd = fileData[name]["imageData"];
-        let wmargin = fd.wstep / 8;
-        let hmargin = fd.hstep / 8;
 
         ctx.clearRect(0, 0, fd.gridWidth, fd.gridHeight);
 
-        function drawSquare(r, c, colour) {
-            ctx.strokeStyle = colour;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(
-                Math.max(c * fd.wstep - wmargin, 0),
-                Math.max(r * fd.hstep - hmargin, 0),
-                Math.min(fd.wstep + wmargin * 2, fd.gridWidth - (c * fd.wstep - wmargin) - 1),
-                Math.min(fd.hstep + hmargin * 2, fd.gridHeight - (r * fd.hstep - hmargin) - 1)
-            );
-        }
-
         fileData[name].markedStrains.map((e) => {
-            drawSquare(e.imageRow, e.imageCol, "#FF0");
+            drawSquare(ctx, e.imageRow, e.imageCol, "#FF0", fd);
         });
 
         if (row != null) {
-            drawSquare(row, col, "#00F");
+            drawSquare(ctx, row, col, "#00F", fd);
         }
     }
 
@@ -94,8 +95,8 @@ function addImageOverlay(data, ele, name) {
     let scalingRatio = img.find("img").width() / fd.imageWidth;
     let paddingLeft = parseInt(img.css("padding-left").replace("px", ""));
 
-    fd.gridWidth = (data.x1 - data.x0) * .862 * scalingRatio;
-    fd.gridHeight = (data.y1 - data.y0) * .855 * scalingRatio;
+    fd.gridWidth = (data.x1 - data.x0) * scalingRatio;
+    fd.gridHeight = (data.y1 - data.y0) * scalingRatio;
 
     // Size of one window
     fd.wstep = fd.gridWidth / 24;
