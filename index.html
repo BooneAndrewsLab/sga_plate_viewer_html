@@ -15,8 +15,8 @@
     <link rel="stylesheet" href="css/main.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css"
-          integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+          integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/select2-bootstrap.min.css">
 </head>
@@ -66,6 +66,10 @@
 
                 <select id="search-genes" class="form-control btn-group" title="Gene search">
                 </select>
+
+                <button id="btn-download-pmm" type="button" class="btn btn-secondary" title="Download normalized plate"
+                        disabled><i class="fas fa-file-download"></i>
+                </button>
 
                 <button id="btn-linkage" type="button" class="btn btn-secondary" title="Chart linkage" disabled><i
                     class="fas fa-dna"></i>
@@ -123,6 +127,7 @@
         integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T"
         crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.14.1/xlsx.full.min.js"></script>
 <script src="js/vendor/gif.js"></script>
 <script src="js/vendor/modal.min.js"></script>
 <script src="js/plugins.js"></script>

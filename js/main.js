@@ -15,8 +15,8 @@ function handleImage(f, ele) {
         return e => {
             // Resize image to 2x container size for faster loading but still retain some detail
             utils.resizeImgData(e.target.result, $("#pairs").width(), (dataUrl, imageData) => {
-                ele.innerHTML = `<img class="img-plate img-fluid" 
-                                      src="${dataUrl}" 
+                ele.innerHTML = `<img class="img-plate img-fluid"
+                                      src="${dataUrl}"
                                       title="${encodeURI(theFile.name)}"/>`;
                 ele.classList.add('show');
                 fileData[name]["imageData"] = imageData;
@@ -139,6 +139,7 @@ function handleDat(f, ele) {
         if (evt.target.readyState === FileReader.DONE) {
             let dat;
             fd.markedStrains = [];
+            fd.plate = plateNum;
             div = document.createElement('div');
 
             if (evt.target.result.slice(0, 24) === 'Colony Project Data File') {
@@ -494,6 +495,7 @@ function handleAnnotation() {
                     annotationIndex[annotation[i][j].text] = [];
                 }
 
+                annotationIndex[[i, annotation[i][j].row, annotation[i][j].col]] = annotation[i][j].text;
                 annotationIndex[annotation[i][j].text].push({plate: i, item: j});
             }
         }
@@ -582,6 +584,44 @@ function clearSearch() {
                 });
             }
         }
+    }, false);
+    document.getElementById('btn-download-pmm').addEventListener('click', () => {
+        let wb = XLSX.utils.book_new();
+
+        for (let fileName in fileData) {
+            if (!fileData.hasOwnProperty(fileName)) continue;
+            let data = fileData[fileName];
+            let xlsData = [["Plate", "Row", "Column", "Avg. Size", "Avg. Normalized size", "Annotation"]];
+
+            for (let row = 0; row < 16; row++) {
+                for (let col = 0; col < 24; col++) {
+                    let avgnorm = (
+                        data.normalized[row * 2 + 1][col * 2 + 1] +
+                        data.normalized[row * 2 + 1][col * 2] +
+                        data.normalized[row * 2][col * 2 + 1] +
+                        data.normalized[row * 2][col * 2]) / 4;
+
+                    let avgsize = (
+                        data.sizes[row * 2 + 1][col * 2 + 1] +
+                        data.sizes[row * 2 + 1][col * 2] +
+                        data.sizes[row * 2][col * 2 + 1] +
+                        data.sizes[row * 2][col * 2]) / 4;
+
+                    let label = "UNDEFINED";
+                    let key = [data.plate, row + 1, col + 1];
+                    if (annotationIndex !== null && annotationIndex.hasOwnProperty(key)) {
+                        label = annotationIndex[key];
+                    }
+
+                    xlsData.push([data.plate, row + 1, col + 1, avgsize, avgnorm, label]);
+                }
+            }
+
+            let ws = XLSX.utils.aoa_to_sheet(xlsData);
+            XLSX.utils.book_append_sheet(wb, ws, fileName);
+        }
+
+        XLSX.writeFile(wb, 'out.xlsx');
     }, false);
 
     let gifBtns = document.querySelectorAll('.gif-btn');

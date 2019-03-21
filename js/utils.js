@@ -81,6 +81,8 @@ export function normalizeWithPmmNoClip(sizes, mm) {
 export function setState(state) {
     let ele = document.getElementById('notification');
     let controls = document.getElementById("controls");
+    let dl_pmm = document.getElementById("btn-download-pmm");
+
     switch (state) {
         case "loading":
             ele.classList.remove('bg-success');
@@ -88,13 +90,18 @@ export function setState(state) {
             ele.children[0].className = 'fas fa-sync fa-spin';
             controls.classList.remove('show');
             $('#search-genes').val(null).html("").trigger('change').prop("disabled", true);
+            dl_pmm.setAttribute("disabled", "disabled");
             $('#linkages').html("");
             break;
         case "ready":
             ele.classList.remove('bg-warning');
             ele.classList.add('bg-success');
             ele.children[0].className = 'fas fa-check';
-            if (document.querySelectorAll('[data-plate-type=heatmap]').length > 0) controls.classList.add('show');
+            if (document.querySelectorAll('[data-plate-type=heatmap]').length > 0) {
+                controls.classList.add('show');
+                dl_pmm.removeAttribute("disabled");
+            }
+
             break;
     }
 }
