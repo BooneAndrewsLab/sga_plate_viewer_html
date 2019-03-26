@@ -613,7 +613,7 @@ function clearSearch() {
                         label = annotationIndex[key];
                     }
 
-                    xlsData.push([data.plate, row + 1, col + 1, avgsize, avgnorm, label]);
+                    xlsData.push([data.plate, 16 - row, col + 1, avgsize, avgnorm, label]);
                 }
             }
 
