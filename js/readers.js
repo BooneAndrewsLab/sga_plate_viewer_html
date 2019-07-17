@@ -82,7 +82,7 @@ export function readPyGitterV1(data) {
 
     for (let i = 5, l; l = lines[i]; i++) {
         l = l.match(/[^\s]+/g);
-        sizes[rows - parseInt(l[1])][parseInt(l[0]) - 1] = parseInt(l[2]);
+        sizes[rows - parseInt(l[0])][parseInt(l[1]) - 1] = parseInt(l[2]);
     }
 
     return sizes;
