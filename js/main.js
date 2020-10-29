@@ -17,6 +17,7 @@ function handleImage(f, ele) {
             utils.resizeImgData(e.target.result, $("#pairs").width(), (dataUrl, imageData) => {
                 ele.innerHTML = `<img class="img-plate img-fluid"
                                       src="${dataUrl}"
+                                      alt="Picture of plate"
                                       title="${encodeURI(theFile.name)}"/>`;
                 ele.classList.add('show');
                 fileData[name]["imageData"] = imageData;
@@ -375,6 +376,8 @@ function initNewItem() {
 function handleFileSelect(evt) {
     const files = evt.target.files; // FileList object
     const numRe = /_(plate|p)?(\d+)_/gi;
+    // d000208_260_001_10-01-20_16-50-23.JPG
+    const autoImagerRe = /^d\d+_\d+_(\d+)_\d{2}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/i;
     let base, names = [], data, tally = {'images': 0, 'dats': 0}, colSize;
     let plateNum;
     let pairsParent, div, inner;
@@ -416,9 +419,16 @@ function handleFileSelect(evt) {
 
         let numCandidate;
 
-        while ((numCandidate = numRe.exec(name)) !== null) {
-            if (parseInt(numCandidate[2]) < 20) { // Most likely not a plate number
-                plateNum = parseInt(numCandidate[2]).toString();
+        // We know this name format, extract plate number
+        if (autoImagerRe.test(name)) {
+            numCandidate = autoImagerRe.exec(name);
+            plateNum = parseInt(numCandidate[1]).toString();
+        } else {
+            // Search for the first underscore separated number in the string that's <20
+            while ((numCandidate = numRe.exec(name)) !== null) {
+                if (parseInt(numCandidate[2]) < 20) { // Most likely not a plate number
+                    plateNum = parseInt(numCandidate[2]).toString();
+                }
             }
         }
 
@@ -569,6 +579,8 @@ function clearSearch() {
                 ele.append(`<div class="row">
                                          <div id="chromosome-${chrom}"></div>
                                        </div>`);
+                let chromosomeSelector = $(`#chromosome-${chrom}`);
+
                 Plotly.newPlot(`chromosome-${chrom}`, [trace1], {
                     title: `Chromosome ${chrom}`,
                     xaxis: {
@@ -579,8 +591,8 @@ function clearSearch() {
                         range: [-2, 2],
                         autorange: false
                     },
-                    width: $(`#chromosome-${chrom}`).parent().width(),
-                    height: $(`#chromosome-${chrom}`).parent().width() / 2,
+                    width: chromosomeSelector.parent().width(),
+                    height: chromosomeSelector.parent().width() / 2,
                 });
             }
         }
