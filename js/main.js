@@ -373,7 +373,7 @@ function initNewItem() {
     }, 0);
 }
 
-function handleFileSelect(evt) {
+async function handleFileSelect(evt) {
     const files = evt.target.files; // FileList object
     const numRe = /_(plate|p)?(\d+)_/gi;
     // d000208_260_001_10-01-20_16-50-23.JPG
@@ -392,6 +392,10 @@ function handleFileSelect(evt) {
     pairsParent.innerHTML = ''; // Clear element
     fileData = {};
 
+    let response = await fetch('files/generic.dat');
+    let blob = await response.blob();
+    let genericDat = new File([blob], "generic.dat");
+
     for (let i = 0, f; f = files[i]; i++) {
         base = utils.getBaseName(f.name);
 
@@ -402,16 +406,16 @@ function handleFileSelect(evt) {
 
         if (f.type.match('image.*')) {
             tally['images']++;
-            fileData[base]['image'] = f;
-        } else {
             tally['dats']++;
-            fileData[base]['data'] = f;
+            fileData[base]['image'] = f;
+            fileData[base]['data'] = genericDat;
         }
     }
 
     names.sort();
 
-    colSize = tally['images'] && tally['dats'] ? '6' : '12';
+    // colSize = tally['images'] && tally['dats'] ? '6' : '12';
+    colSize = '6';
 
     for (let i = 0, name; name = names[i]; i++) {
         data = fileData[name];
