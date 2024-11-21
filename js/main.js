@@ -261,10 +261,12 @@ function handleDat(f, ele) {
                     let row = 16 - item.row;
                     let col = item.col - 1;
 
-                    mtrx._data[row * 2 + 1][col * 2 + 1] = item.text;
-                    mtrx._data[row * 2 + 1][col * 2] = item.text;
-                    mtrx._data[row * 2][col * 2 + 1] = item.text;
-                    mtrx._data[row * 2][col * 2] = item.text;
+                    let label = `(${item.row}, ${item.col}) ${item.text}`;
+
+                    mtrx._data[row * 2 + 1][col * 2 + 1] = label;
+                    mtrx._data[row * 2 + 1][col * 2] = label;
+                    mtrx._data[row * 2][col * 2 + 1] = label;
+                    mtrx._data[row * 2][col * 2] = label;
 
                     if (linkages.hasOwnProperty(item.c)) {
                         let avgnorm = (
