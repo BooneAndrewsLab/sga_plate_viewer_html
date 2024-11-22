@@ -97,10 +97,7 @@ function addImageOverlay(data, ele, name) {
         continue;
     }
 
-    console.log(window.devicePixelRatio);
-
     let scalingRatio = img.find("img").width() / fd.imageWidth;
-    scalingRatio *= 1.4;
     let paddingLeft = parseInt(img.css("padding-left").replace("px", ""));
 
     fd.gridWidth = (data.x1 - data.x0) * scalingRatio;
@@ -401,7 +398,7 @@ async function handleFileSelect(evt) {
     pairsParent.innerHTML = ''; // Clear element
     fileData = {};
 
-    let response = await fetch('files/generic.dat');
+    let response = await fetch('files/generic_auto.dat');
     let blob = await response.blob();
     let genericDat = new File([blob], "generic.dat");
 
