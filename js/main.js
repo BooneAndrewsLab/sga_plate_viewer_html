@@ -94,6 +94,7 @@ function addImageOverlay(data, ele, name) {
     }
 
     let scalingRatio = img.find("img").width() / fd.imageWidth;
+    console.log(scalingRatio, img.find("img").width(), fd.imageWidth);
     let paddingLeft = parseInt(img.css("padding-left").replace("px", ""));
 
     fd.gridWidth = (data.x1 - data.x0) * scalingRatio;
