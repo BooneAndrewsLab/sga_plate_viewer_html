@@ -93,9 +93,14 @@ function addImageOverlay(data, ele, name) {
         return;
     }
 
+    while (!img.find('img')) {  // wait for img to load
+        continue;
+    }
+
+    console.log(window.devicePixelRatio);
+
     let scalingRatio = img.find("img").width() / fd.imageWidth;
     scalingRatio *= 1.4;
-    console.log(scalingRatio, img.find("img").width(), fd.imageWidth);
     let paddingLeft = parseInt(img.css("padding-left").replace("px", ""));
 
     fd.gridWidth = (data.x1 - data.x0) * scalingRatio;
